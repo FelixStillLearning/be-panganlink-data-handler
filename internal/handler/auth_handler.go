@@ -46,3 +46,22 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "token": token})
 }
+
+func (h *AuthHandler) Me(c *gin.Context) {
+	userId := c.GetString("user_id")
+	role := c.GetString("role")
+	// Idealnya fetch full profil user dari database via AuthService
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User profile retrieved",
+		"user": gin.H{
+			"id":   userId,
+			"role": role,
+		},
+	})
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	// Pada implementasi stateless JWT, logout biasanya dieksekusi dengan menghapus token dari sisi client
+	// Namun endpoint ini tetap dikembalikan 200 OK
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
+}
