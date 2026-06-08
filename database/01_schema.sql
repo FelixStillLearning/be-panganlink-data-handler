@@ -69,3 +69,14 @@ CREATE TABLE harga_pasar (
     UNIQUE KEY unique_harga_pasar (komoditas_id, wilayah, tanggal),
     FOREIGN KEY (komoditas_id) REFERENCES komoditas(id) ON DELETE CASCADE
 );
+
+-- notifications: sistem notifikasi lonceng in-app
+CREATE TABLE notifications (
+    id         VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id    VARCHAR(36),
+    title      VARCHAR(100) NOT NULL,
+    message    TEXT NOT NULL,
+    is_read    BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

@@ -17,12 +17,13 @@ type OrderService interface {
 }
 
 type orderService struct {
-	repo    repository.OrderRepository
-	payment PaymentService
+	repo      repository.OrderRepository
+	payment   PaymentService
+	notifRepo repository.NotificationRepository
 }
 
-func NewOrderService(r repository.OrderRepository, p PaymentService) OrderService {
-	return &orderService{repo: r, payment: p}
+func NewOrderService(r repository.OrderRepository, p PaymentService, nr repository.NotificationRepository) OrderService {
+	return &orderService{repo: r, payment: p, notifRepo: nr}
 }
 
 func (s *orderService) Checkout(buyerID string, items []model.OrderItem) (*model.Order, error) {
@@ -89,6 +90,22 @@ func (s *orderService) HandleMidtransWebhook(payload map[string]interface{}) err
 		status = "paid"
 		now := time.Now()
 		paidAt = &now
+
+		// Create notification for Buyer
+		order, err := s.repo.FindByID(orderID)
+		if err == nil && order != nil {
+			s.notifRepo.Create(&model.Notification{
+				UserID:  order.BuyerID,
+				Title:   "Pembayaran Berhasil",
+				Message: fmt.Sprintf("Pembayaran untuk pesanan %s telah berhasil dikonfirmasi.", orderID),
+			})
+
+			// Notify Petani (from the first item as simplified approach)
+			if len(order.Items) > 0 {
+				// Ideally we fetch product to get PetaniID, but this needs ProductRepository
+				// For now, we only notify Buyer to avoid circular dependencies
+			}
+		}
 	case "cancel", "expire", "deny":
 		status = "rejected"
 	case "pending":

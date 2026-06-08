@@ -30,15 +30,15 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	userRepo := repository.NewUserRepository(db)
 	komoditasRepo := repository.NewKomoditasRepository(db)
 	productRepo := repository.NewProductRepository(db)
-
 	orderRepo := repository.NewOrderRepository(db)
+	notifRepo := repository.NewNotificationRepository(db)
 
 	authSvc := service.NewAuthService(userRepo, cfg)
 	komoditasSvc := service.NewKomoditasService(komoditasRepo)
 	productSvc := service.NewProductService(productRepo)
 	aiSvc := service.NewAIService(cfg.AIServiceURL)
 	paymentSvc := service.NewPaymentService(cfg.MidtransServerKey, false)
-	orderSvc := service.NewOrderService(orderRepo, paymentSvc)
+	orderSvc := service.NewOrderService(orderRepo, paymentSvc, notifRepo)
 
 	// Cloud Storage
 	var azureHelper *storage.AzureHelper
@@ -57,6 +57,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	pembeliHandler := handler.NewPembeliHandler(orderSvc, userRepo)
 	paymentHandler := handler.NewPaymentHandler(orderSvc)
 	uploadHandler := handler.NewUploadHandler(azureHelper)
+	notifHandler := handler.NewNotificationHandler(notifRepo)
 
 	// Routes
 	api := r.Group("/api/v1")
@@ -129,6 +130,10 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			
 			petani.GET("/profile", petaniHandler.GetProfile)
 			petani.PUT("/profile", petaniHandler.UpdateProfile)
+
+			petani.GET("/notifications", notifHandler.GetNotifications)
+			petani.PUT("/notifications/read-all", notifHandler.MarkAllAsRead)
+			petani.PUT("/notifications/:id/read", notifHandler.MarkAsRead)
 		}
 
 		pembeli := api.Group("/pembeli")
@@ -142,6 +147,10 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			pembeli.GET("/history", pembeliHandler.GetHistory)
 			pembeli.GET("/profile", pembeliHandler.GetProfile)
 			pembeli.PUT("/profile", pembeliHandler.UpdateProfile)
+
+			pembeli.GET("/notifications", notifHandler.GetNotifications)
+			pembeli.PUT("/notifications/read-all", notifHandler.MarkAllAsRead)
+			pembeli.PUT("/notifications/:id/read", notifHandler.MarkAsRead)
 		}
 	}
 
