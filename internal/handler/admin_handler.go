@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/example/be-panganlink-data-handler/internal/model"
@@ -22,7 +23,7 @@ func NewAdminHandler(ks service.KomoditasService, aiSvc service.AIService, ur re
 
 func (h *AdminHandler) Dashboard(c *gin.Context) {
 	userCount, _ := h.userRepo.Count()
-	products, _ := h.productService.GetAll()
+	products, _ := h.productService.GetAll(1, 99999) // Temp workaround for count
 	c.JSON(200, gin.H{
 		"message": "Admin dashboard",
 		"total_users": userCount,
@@ -56,12 +57,22 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 }
 
 func (h *AdminHandler) GetProducts(c *gin.Context) {
-	products, err := h.productService.GetAll()
+	page := 1
+	limit := 20
+	// We can parse query params if they exist, else default
+	if p := c.Query("page"); p != "" {
+		fmt.Sscanf(p, "%d", &page)
+	}
+	if l := c.Query("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+
+	products, err := h.productService.GetAll(page, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, gin.H{"data": products})
+	c.JSON(200, gin.H{"data": products, "page": page, "limit": limit})
 }
 func (h *AdminHandler) ApproveProduct(c *gin.Context) { 
 	h.productService.Update(c.Param("id"), &model.Product{Status: "approved"}) // Mock status update

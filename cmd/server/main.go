@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,9 +10,18 @@ import (
 
 	"github.com/example/be-panganlink-data-handler/internal/app"
 	"github.com/example/be-panganlink-data-handler/internal/config"
+	"github.com/sirupsen/logrus"
 )
 
+var log = logrus.New()
+
 func main() {
+	// Structured Logging (JSON format for APM compatibility)
+	log.SetFormatter(&logrus.JSONFormatter{})
+	log.SetOutput(os.Stdout)
+	
+	log.Info("Starting PanganLink Backend Server...")
+
 	cfg := config.LoadConfig()
 	db := config.InitDatabase(cfg)
 
@@ -27,7 +35,7 @@ func main() {
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
 	go func() {
-		log.Printf("Server starting on port %s", cfg.ServerPort)
+		log.WithField("port", cfg.ServerPort).Info("Server listening")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
@@ -36,12 +44,9 @@ func main() {
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
 	quit := make(chan os.Signal, 1)
-	// kill (no param) default send syscall.SIGTERM
-	// kill -2 is syscall.SIGINT
-	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	log.Warn("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -49,5 +54,5 @@ func main() {
 		log.Fatal("Server forced to shutdown: ", err)
 	}
 
-	log.Println("Server exiting")
+	log.Info("Server exiting gracefully")
 }

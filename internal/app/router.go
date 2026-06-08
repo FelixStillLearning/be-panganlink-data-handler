@@ -26,6 +26,12 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// Security Headers (Helmet-equivalent)
+	r.Use(middleware.SecurityHeaders())
+
+	// Rate Limiting (DDoS & Brute Force protection)
+	r.Use(middleware.RateLimiter())
+
 	// Dependency Injection
 	userRepo := repository.NewUserRepository(db)
 	komoditasRepo := repository.NewKomoditasRepository(db)

@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/example/be-panganlink-data-handler/internal/model"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -17,6 +20,39 @@ func InitDatabase(cfg *Config) *gorm.DB {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
+	// Auto-Migrate schemas (Production-ready)
+	err = db.AutoMigrate(
+		&model.User{},
+		&model.Komoditas{},
+		&model.Product{},
+		&model.Order{},
+		&model.OrderItem{},
+		&model.Notification{},
+	)
+	if err != nil {
+		log.Printf("Migration warning: %v", err)
+	}
+
+	// Seeder for Super Admin
+	seedSuperAdmin(db)
+
 	log.Println("Database connection established")
 	return db
+}
+
+func seedSuperAdmin(db *gorm.DB) {
+	var count int64
+	db.Model(&model.User{}).Where("role = ?", "admin").Count(&count)
+	if count == 0 {
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+		admin := model.User{
+			ID:       uuid.New().String(),
+			Name:     "Super Admin",
+			Email:    "admin@panganlink.com",
+			Password: string(hashedPassword),
+			Role:     "admin",
+		}
+		db.Create(&admin)
+		log.Println("Super Admin seeded automatically (admin@panganlink.com / admin123)")
+	}
 }
