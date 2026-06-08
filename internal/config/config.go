@@ -22,7 +22,10 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-	_ = godotenv.Load() // Ignore error if .env not found (using env vars from OS/Docker)
+	err := godotenv.Load() // Try current dir first
+	if err != nil {
+		_ = godotenv.Load("../../.env") // Try root dir if running from cmd/server
+	}
 
 	return &Config{
 		DBHost:            getEnv("DB_HOST", "mysql"), // In docker compose it's 'mysql'
