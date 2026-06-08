@@ -157,6 +157,8 @@ func (h *PembeliHandler) UpdateProfile(c *gin.Context) {
 	var req struct {
 		Name     string `json:"name"`
 		Location string `json:"location"`
+		Phone    string `json:"phone"`
+		FotoURL  string `json:"foto_url"`
 	}
 	if err := c.ShouldBindJSON(&req); err == nil {
 		if req.Name != "" {
@@ -164,6 +166,12 @@ func (h *PembeliHandler) UpdateProfile(c *gin.Context) {
 		}
 		if req.Location != "" {
 			user.Location = req.Location
+		}
+		if req.Phone != "" {
+			user.Phone = req.Phone
+		}
+		if req.FotoURL != "" {
+			user.FotoURL = req.FotoURL
 		}
 		_ = h.userRepo.Update(user)
 	}
