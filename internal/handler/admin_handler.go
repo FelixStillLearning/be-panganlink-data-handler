@@ -28,6 +28,15 @@ func (h *AdminHandler) Dashboard(c *gin.Context) {
 		"message": "Admin dashboard",
 		"total_users": userCount,
 		"total_products": len(products),
+		"weekly_sales": []map[string]interface{}{
+			{"day": "Sen", "value": 15, "height": "15%"},
+			{"day": "Sel", "value": 30, "height": "30%"},
+			{"day": "Rab", "value": 25, "height": "25%"},
+			{"day": "Kam", "value": 50, "height": "50%"},
+			{"day": "Jum", "value": 75, "height": "75%"},
+			{"day": "Sab", "value": 90, "height": "90%"},
+			{"day": "Min", "value": 60, "height": "60%"},
+		},
 	})
 }
 

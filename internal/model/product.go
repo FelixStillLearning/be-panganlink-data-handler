@@ -7,6 +7,7 @@ type Komoditas struct {
 	Nama     string `gorm:"type:varchar(50);not null" json:"nama"`
 	Satuan   string `gorm:"type:varchar(20);not null" json:"satuan"`
 	Kategori string `gorm:"type:varchar(50)" json:"kategori"`
+	FotoUrl  string `gorm:"type:text" json:"foto_url"`
 }
 
 func (Komoditas) TableName() string {
