@@ -28,5 +28,19 @@ func (h *PublicHandler) GetCommodities(c *gin.Context) {
 }
 
 func (h *PublicHandler) GetTestimonials(c *gin.Context) {
-	c.JSON(200, gin.H{"data": []string{"Sangat membantu!", "Harga transparan."}})
+	testimonials := []map[string]string{
+		{
+			"text": "Semenjak menggunakan PanganLink, saya tahu pasti harga pasaran jagung saya lewat fitur prediksi AI. Tidak ada lagi tengkulak yang mempermainkan harga panen saya.",
+			"name": "Pak Wahyudi",
+			"role": "Petani Jagung, Jawa Timur",
+			"initial": "W",
+		},
+		{
+			"text": "Sangat membantu bisnis katering kami! Harga bahan pokok jauh lebih stabil dan wajar dibanding beli dari pasar tangan ketiga. Kualitas sayurnya pun dijamin segar.",
+			"name": "Ibu Ningsih",
+			"role": "Pemilik Katering, Jakarta",
+			"initial": "I",
+		},
+	}
+	c.JSON(200, gin.H{"data": testimonials})
 }
