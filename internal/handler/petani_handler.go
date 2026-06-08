@@ -10,10 +10,11 @@ import (
 type PetaniHandler struct {
 	productService service.ProductService
 	aiService      service.AIService
+	orderService   service.OrderService
 }
 
-func NewPetaniHandler(ps service.ProductService, aiSvc service.AIService) *PetaniHandler {
-	return &PetaniHandler{productService: ps, aiService: aiSvc}
+func NewPetaniHandler(ps service.ProductService, aiSvc service.AIService, os service.OrderService) *PetaniHandler {
+	return &PetaniHandler{productService: ps, aiService: aiSvc, orderService: os}
 }
 
 func (h *PetaniHandler) Dashboard(c *gin.Context) { c.JSON(200, gin.H{"message": "Petani dashboard"}) }
@@ -66,8 +67,32 @@ func (h *PetaniHandler) DeleteProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Product deleted"})
 }
 
-func (h *PetaniHandler) GetOrders(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
-func (h *PetaniHandler) UpdateOrderStatus(c *gin.Context) { c.JSON(200, gin.H{"message": "Order status updated"}) }
+func (h *PetaniHandler) GetOrders(c *gin.Context) {
+	petaniID := c.GetString("user_id")
+	orders, err := h.orderService.GetPetaniOrders(petaniID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": orders})
+}
+
+func (h *PetaniHandler) UpdateOrderStatus(c *gin.Context) {
+	orderID := c.Param("id")
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.orderService.UpdateOrderStatus(orderID, req.Status); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Order status updated"})
+}
 func (h *PetaniHandler) GetHistory(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
 
 func (h *PetaniHandler) GetRecommendations(c *gin.Context) {

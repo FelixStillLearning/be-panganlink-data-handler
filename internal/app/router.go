@@ -18,15 +18,21 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	komoditasRepo := repository.NewKomoditasRepository(db)
 	productRepo := repository.NewProductRepository(db)
 
+	orderRepo := repository.NewOrderRepository(db)
+
 	authSvc := service.NewAuthService(userRepo, cfg)
 	komoditasSvc := service.NewKomoditasService(komoditasRepo)
 	productSvc := service.NewProductService(productRepo)
 	aiSvc := service.NewAIService(cfg.AIServiceURL)
+	paymentSvc := service.NewPaymentService(cfg.MidtransServerKey, false)
+	orderSvc := service.NewOrderService(orderRepo, paymentSvc)
 
 	authHandler := handler.NewAuthHandler(authSvc)
 	publicHandler := handler.NewPublicHandler(komoditasSvc)
 	adminHandler := handler.NewAdminHandler(komoditasSvc, aiSvc)
-	petaniHandler := handler.NewPetaniHandler(productSvc, aiSvc)
+	petaniHandler := handler.NewPetaniHandler(productSvc, aiSvc, orderSvc)
+	pembeliHandler := handler.NewPembeliHandler(orderSvc)
+	paymentHandler := handler.NewPaymentHandler(orderSvc)
 
 	// Routes
 	api := r.Group("/api/v1")
@@ -46,6 +52,12 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			auth.POST("/login", authHandler.Login)
 			auth.GET("/me", middleware.RequireAuth(cfg.JWTSecret), authHandler.Me)
 			auth.POST("/logout", middleware.RequireAuth(cfg.JWTSecret), authHandler.Logout)
+		}
+
+		payments := api.Group("/payments")
+		{
+			// Webhook Midtrans (No Auth Required)
+			payments.POST("/webhook", paymentHandler.Webhook)
 		}
 
 		admin := api.Group("/admin")
@@ -90,6 +102,19 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			
 			petani.GET("/profile", petaniHandler.GetProfile)
 			petani.PUT("/profile", petaniHandler.UpdateProfile)
+		}
+
+		pembeli := api.Group("/pembeli")
+		pembeli.Use(middleware.RequireAuth(cfg.JWTSecret, "pembeli"))
+		{
+			pembeli.GET("/dashboard", pembeliHandler.Dashboard)
+			pembeli.GET("/products", pembeliHandler.GetProducts)
+			pembeli.GET("/orders", pembeliHandler.GetOrders)
+			pembeli.POST("/orders/checkout", pembeliHandler.Checkout)
+			pembeli.PUT("/orders/:id/status", pembeliHandler.UpdateOrderStatus)
+			pembeli.GET("/history", pembeliHandler.GetHistory)
+			pembeli.GET("/profile", pembeliHandler.GetProfile)
+			pembeli.PUT("/profile", pembeliHandler.UpdateProfile)
 		}
 	}
 
