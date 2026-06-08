@@ -12,6 +12,21 @@ import (
 )
 
 func InitDatabase(cfg *Config) *gorm.DB {
+	// 1. Connect without database name to create the database if it doesn't exist
+	dsnNoDB := fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort)
+
+	dbNoName, err := gorm.Open(mysql.Open(dsnNoDB), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Failed to connect to MySQL server: %v", err)
+	}
+
+	createDBCommand := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", cfg.DBName)
+	if err := dbNoName.Exec(createDBCommand).Error; err != nil {
+		log.Fatalf("Failed to create database: %v", err)
+	}
+
+	// 2. Connect with the database name to perform migrations
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
 
