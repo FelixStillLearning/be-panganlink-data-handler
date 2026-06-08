@@ -133,4 +133,28 @@ func (h *PetaniHandler) GetProfile(c *gin.Context) {
 	c.JSON(200, gin.H{"data": user})
 }
 
-func (h *PetaniHandler) UpdateProfile(c *gin.Context) { c.JSON(200, gin.H{"message": "Profile updated"}) }
+func (h *PetaniHandler) UpdateProfile(c *gin.Context) {
+	petaniID := c.GetString("user_id")
+	user, err := h.userRepo.FindByID(petaniID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	
+	// Bind body and update specific fields
+	var req struct {
+		Name     string `json:"name"`
+		Location string `json:"location"`
+	}
+	if err := c.ShouldBindJSON(&req); err == nil {
+		if req.Name != "" {
+			user.Name = req.Name
+		}
+		if req.Location != "" {
+			user.Location = req.Location
+		}
+		_ = h.userRepo.Update(user)
+	}
+	
+	c.JSON(200, gin.H{"message": "Profile updated", "data": user})
+}

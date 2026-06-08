@@ -20,13 +20,40 @@ func NewAdminHandler(ks service.KomoditasService, aiSvc service.AIService, ur re
 	return &AdminHandler{komoditasService: ks, aiService: aiSvc, userRepo: ur, productService: ps}
 }
 
-func (h *AdminHandler) Dashboard(c *gin.Context) { c.JSON(200, gin.H{"message": "Admin dashboard"}) }
-
-func (h *AdminHandler) GetUsers(c *gin.Context) {
-	c.JSON(200, gin.H{"data": []string{}}) 
+func (h *AdminHandler) Dashboard(c *gin.Context) {
+	userCount, _ := h.userRepo.Count()
+	products, _ := h.productService.GetAll()
+	c.JSON(200, gin.H{
+		"message": "Admin dashboard",
+		"total_users": userCount,
+		"total_products": len(products),
+	})
 }
 
-func (h *AdminHandler) UpdateUserStatus(c *gin.Context) { c.JSON(200, gin.H{"message": "User status updated"}) }
+func (h *AdminHandler) GetUsers(c *gin.Context) {
+	users, err := h.userRepo.GetAll()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"data": users}) 
+}
+
+func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
+	// Let's assume body contains {"status": "banned" / "active"} or similar.
+	// For simplicity, we just fetch user and save.
+	userID := c.Param("id")
+	user, err := h.userRepo.FindByID(userID)
+	if err != nil {
+		c.JSON(404, gin.H{"error": "User not found"})
+		return
+	}
+	// Currently there is no "status" field in model.User (from 01_schema.sql), 
+	// so let's just mock it or if we added it, update it.
+	// We'll just return success for now since schema doesn't have user.status.
+	_ = user
+	c.JSON(200, gin.H{"message": "User status updated (mock due to schema)"}) 
+}
 
 func (h *AdminHandler) GetProducts(c *gin.Context) {
 	products, err := h.productService.GetAll()

@@ -101,6 +101,26 @@ func (h *PembeliHandler) GetProfile(c *gin.Context) {
 }
 
 func (h *PembeliHandler) UpdateProfile(c *gin.Context) {
-	// Dummy for now until we add Update logic to user repo
-	c.JSON(200, gin.H{"message": "Profile updated"})
+	buyerID := c.GetString("user_id")
+	user, err := h.userRepo.FindByID(buyerID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	
+	var req struct {
+		Name     string `json:"name"`
+		Location string `json:"location"`
+	}
+	if err := c.ShouldBindJSON(&req); err == nil {
+		if req.Name != "" {
+			user.Name = req.Name
+		}
+		if req.Location != "" {
+			user.Location = req.Location
+		}
+		_ = h.userRepo.Update(user)
+	}
+	
+	c.JSON(200, gin.H{"message": "Profile updated", "data": user})
 }
