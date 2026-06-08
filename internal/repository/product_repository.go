@@ -21,7 +21,7 @@ func NewProductRepository(db *gorm.DB) ProductRepository { return &productReposi
 func (r *productRepository) FindAll(page, limit int) ([]model.Product, error) {
 	var products []model.Product
 	offset := (page - 1) * limit
-	err := r.db.Offset(offset).Limit(limit).Find(&products).Error
+	err := r.db.Preload("Komoditas").Preload("User").Offset(offset).Limit(limit).Find(&products).Error
 	return products, err
 }
 

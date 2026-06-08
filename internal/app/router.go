@@ -63,7 +63,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	publicHandler := handler.NewPublicHandler(komoditasSvc)
 	adminHandler := handler.NewAdminHandler(db, komoditasSvc, aiSvc, userRepo, productSvc)
 	petaniHandler := handler.NewPetaniHandler(productSvc, aiSvc, orderSvc, userRepo)
-	pembeliHandler := handler.NewPembeliHandler(orderSvc, userRepo)
+	pembeliHandler := handler.NewPembeliHandler(orderSvc, userRepo, productSvc)
 	paymentHandler := handler.NewPaymentHandler(orderSvc)
 	uploadHandler := handler.NewUploadHandler(azureHelper)
 	notifHandler := handler.NewNotificationHandler(notifRepo)

@@ -10,12 +10,13 @@ import (
 )
 
 type PembeliHandler struct {
-	orderService service.OrderService
-	userRepo     repository.UserRepository
+	orderService   service.OrderService
+	userRepo       repository.UserRepository
+	productService service.ProductService
 }
 
-func NewPembeliHandler(os service.OrderService, ur repository.UserRepository) *PembeliHandler {
-	return &PembeliHandler{orderService: os, userRepo: ur}
+func NewPembeliHandler(os service.OrderService, ur repository.UserRepository, ps service.ProductService) *PembeliHandler {
+	return &PembeliHandler{orderService: os, userRepo: ur, productService: ps}
 }
 
 func (h *PembeliHandler) Dashboard(c *gin.Context) {
@@ -53,7 +54,23 @@ func (h *PembeliHandler) Dashboard(c *gin.Context) {
 	})
 }
 
-func (h *PembeliHandler) GetProducts(c *gin.Context) { c.JSON(200, gin.H{"message": "List of products to buy"}) }
+func (h *PembeliHandler) GetProducts(c *gin.Context) {
+	products, err := h.productService.GetAll(1, 100) // Getting all products for now
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	
+	// Filter only approved products
+	var approvedProducts []model.Product
+	for _, p := range products {
+		if p.Status == "approved" {
+			approvedProducts = append(approvedProducts, p)
+		}
+	}
+	
+	c.JSON(http.StatusOK, gin.H{"data": approvedProducts})
+}
 
 type CheckoutRequest struct {
 	Items []model.OrderItem `json:"items" binding:"required"`
