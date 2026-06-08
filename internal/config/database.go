@@ -43,6 +43,7 @@ func InitDatabase(cfg *Config) *gorm.DB {
 		&model.Order{},
 		&model.OrderItem{},
 		&model.Notification{},
+		&model.MarketPrice{},
 	)
 	if err != nil {
 		log.Printf("Migration warning: %v", err)

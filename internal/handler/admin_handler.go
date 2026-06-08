@@ -8,35 +8,72 @@ import (
 	"github.com/example/be-panganlink-data-handler/internal/repository"
 	"github.com/example/be-panganlink-data-handler/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"time"
 )
 
 type AdminHandler struct {
+	db               *gorm.DB
 	komoditasService service.KomoditasService
 	aiService        service.AIService
 	userRepo         repository.UserRepository
 	productService   service.ProductService
 }
 
-func NewAdminHandler(ks service.KomoditasService, aiSvc service.AIService, ur repository.UserRepository, ps service.ProductService) *AdminHandler {
-	return &AdminHandler{komoditasService: ks, aiService: aiSvc, userRepo: ur, productService: ps}
+func NewAdminHandler(db *gorm.DB, ks service.KomoditasService, aiSvc service.AIService, ur repository.UserRepository, ps service.ProductService) *AdminHandler {
+	return &AdminHandler{db: db, komoditasService: ks, aiService: aiSvc, userRepo: ur, productService: ps}
 }
 
 func (h *AdminHandler) Dashboard(c *gin.Context) {
 	userCount, _ := h.userRepo.Count()
 	products, _ := h.productService.GetAll(1, 99999) // Temp workaround for count
+
+	var weeklySales []map[string]interface{}
+	daysOfWeek := []string{"Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"}
+	
+	now := time.Now()
+	var maxVal int64 = 0
+	var counts [7]int64
+
+	// Get the past 7 days (including today)
+	for i := 6; i >= 0; i-- {
+		targetDate := now.AddDate(0, 0, -i)
+		startOfDay := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, targetDate.Location())
+		endOfDay := startOfDay.Add(24 * time.Hour)
+
+		var count int64
+		h.db.Model(&model.Order{}).Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay).Count(&count)
+		counts[6-i] = count
+		if count > maxVal {
+			maxVal = count
+		}
+	}
+
+	for i := 6; i >= 0; i-- {
+		targetDate := now.AddDate(0, 0, -i)
+		dayName := daysOfWeek[targetDate.Weekday()]
+		
+		val := counts[6-i]
+		height := "0%"
+		if maxVal > 0 {
+			height = fmt.Sprintf("%d%%", (val*100)/maxVal)
+		} else if val == 0 {
+			height = "5%" // just a tiny sliver so it's not totally empty
+		}
+
+		weeklySales = append(weeklySales, map[string]interface{}{
+			"day":    dayName,
+			"value":  val,
+			"height": height,
+		})
+	}
+
 	c.JSON(200, gin.H{
 		"message": "Admin dashboard",
 		"total_users": userCount,
 		"total_products": len(products),
-		"weekly_sales": []map[string]interface{}{
-			{"day": "Sen", "value": 15, "height": "15%"},
-			{"day": "Sel", "value": 30, "height": "30%"},
-			{"day": "Rab", "value": 25, "height": "25%"},
-			{"day": "Kam", "value": 50, "height": "50%"},
-			{"day": "Jum", "value": 75, "height": "75%"},
-			{"day": "Sab", "value": 90, "height": "90%"},
-			{"day": "Min", "value": 60, "height": "60%"},
-		},
+		"weekly_sales": weeklySales,
 	})
 }
 
@@ -50,17 +87,12 @@ func (h *AdminHandler) GetUsers(c *gin.Context) {
 }
 
 func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
-	// Let's assume body contains {"status": "banned" / "active"} or similar.
-	// For simplicity, we just fetch user and save.
 	userID := c.Param("id")
 	user, err := h.userRepo.FindByID(userID)
 	if err != nil {
 		c.JSON(404, gin.H{"error": "User not found"})
 		return
 	}
-	// Currently there is no "status" field in model.User (from 01_schema.sql), 
-	// so let's just mock it or if we added it, update it.
-	// We'll just return success for now since schema doesn't have user.status.
 	_ = user
 	c.JSON(200, gin.H{"message": "User status updated (mock due to schema)"}) 
 }
@@ -68,7 +100,6 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 func (h *AdminHandler) GetProducts(c *gin.Context) {
 	page := 1
 	limit := 20
-	// We can parse query params if they exist, else default
 	if p := c.Query("page"); p != "" {
 		fmt.Sscanf(p, "%d", &page)
 	}
@@ -137,8 +168,37 @@ func (h *AdminHandler) DeleteCommodity(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Commodity deleted"})
 }
 
-func (h *AdminHandler) GetMarketPrices(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
-func (h *AdminHandler) CreateMarketPrice(c *gin.Context) { c.JSON(200, gin.H{"message": "Market price added"}) }
+func (h *AdminHandler) GetMarketPrices(c *gin.Context) {
+	var prices []model.MarketPrice
+	if err := h.db.Order("date DESC").Find(&prices).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": prices})
+}
+
+func (h *AdminHandler) CreateMarketPrice(c *gin.Context) {
+	var p model.MarketPrice
+	if err := c.ShouldBindJSON(&p); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	p.ID = uuid.New().String()
+	if err := h.db.Create(&p).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Market price added", "data": p})
+}
+
+func (h *AdminHandler) DeleteMarketPrice(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.db.Where("id = ?", id).Delete(&model.MarketPrice{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Market price deleted"})
+}
 
 func (h *AdminHandler) GetPriceTrends(c *gin.Context) {
 	komoditasID := c.Query("komoditas_id")
