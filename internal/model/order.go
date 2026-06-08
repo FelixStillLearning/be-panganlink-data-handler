@@ -14,12 +14,15 @@ type Order struct {
 	CreatedAt        time.Time   `json:"created_at" gorm:"autoCreateTime"`
 
 	Items []OrderItem `json:"items" gorm:"foreignKey:OrderID"`
+	Buyer *User       `json:"buyer,omitempty" gorm:"foreignKey:BuyerID"`
 }
 
 type OrderItem struct {
-	ID         string  `json:"id" gorm:"primaryKey;type:varchar(36);default:(UUID())"`
-	OrderID    string  `json:"order_id" gorm:"type:varchar(20)"`
-	ProductID  string  `json:"product_id" gorm:"type:varchar(36)"`
-	Jumlah     float64 `json:"jumlah" gorm:"type:decimal(10,2);not null"`
-	HargaUnit  float64 `json:"harga_unit" gorm:"type:decimal(12,2);not null"`
+	ID         string   `json:"id" gorm:"primaryKey;type:varchar(36);default:(UUID())"`
+	OrderID    string   `json:"order_id" gorm:"type:varchar(20)"`
+	ProductID  string   `json:"product_id" gorm:"type:varchar(36)"`
+	Jumlah     float64  `json:"jumlah" gorm:"type:decimal(10,2);not null"`
+	HargaUnit  float64  `json:"harga_unit" gorm:"type:decimal(12,2);not null"`
+	
+	Product    *Product `json:"product,omitempty" gorm:"foreignKey:ProductID"`
 }

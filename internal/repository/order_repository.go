@@ -55,7 +55,10 @@ func (r *orderRepository) FindByPetaniID(petaniID string) ([]model.Order, error)
 		Joins("JOIN order_items ON order_items.order_id = orders.id").
 		Joins("JOIN products ON products.id = order_items.product_id").
 		Where("products.user_id = ?", petaniID).
-		Preload("Items")
+		Preload("Items").
+		Preload("Items.Product").
+		Preload("Items.Product.Komoditas").
+		Preload("Buyer")
 
 	if err := query.Find(&orders).Error; err != nil {
 		return nil, err
