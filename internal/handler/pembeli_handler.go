@@ -21,7 +21,36 @@ func NewPembeliHandler(os service.OrderService, ur repository.UserRepository) *P
 func (h *PembeliHandler) Dashboard(c *gin.Context) {
 	buyerID := c.GetString("user_id")
 	orders, _ := h.orderService.GetBuyerOrders(buyerID)
-	c.JSON(200, gin.H{"message": "Pembeli dashboard", "total_orders": len(orders)})
+
+	var totalPembelian int = len(orders)
+	var dalamPengiriman int = 0
+	var totalBelanja float64 = 0
+	
+	// Assume we calculate unique products as 'produk_favorit' just to have a number
+	produkFavoritMap := make(map[string]bool)
+
+	for _, o := range orders {
+		if o.Status == "dikirim" || o.Status == "diproses" {
+			dalamPengiriman++
+		}
+		if o.Status == "selesai" || o.Status == "success" {
+			totalBelanja += o.TotalHarga
+		}
+		for _, item := range o.Items {
+			produkFavoritMap[item.ProductID] = true
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Pembeli dashboard", 
+		"data": gin.H{
+			"total_pembelian": totalPembelian,
+			"dalam_pengiriman": dalamPengiriman,
+			"total_belanja": totalBelanja,
+			"produk_favorit": len(produkFavoritMap),
+			"recent_orders": orders,
+		},
+	})
 }
 
 func (h *PembeliHandler) GetProducts(c *gin.Context) { c.JSON(200, gin.H{"message": "List of products to buy"}) }

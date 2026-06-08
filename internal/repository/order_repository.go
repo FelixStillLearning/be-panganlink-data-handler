@@ -42,7 +42,13 @@ func (r *orderRepository) FindByID(id string) (*model.Order, error) {
 
 func (r *orderRepository) FindByBuyerID(buyerID string) ([]model.Order, error) {
 	var orders []model.Order
-	if err := r.db.Preload("Items").Where("buyer_id = ?", buyerID).Find(&orders).Error; err != nil {
+	query := r.db.Where("buyer_id = ?", buyerID).
+		Preload("Items").
+		Preload("Items.Product").
+		Preload("Items.Product.User").
+		Preload("Items.Product.Komoditas")
+
+	if err := query.Find(&orders).Error; err != nil {
 		return nil, err
 	}
 	return orders, nil
