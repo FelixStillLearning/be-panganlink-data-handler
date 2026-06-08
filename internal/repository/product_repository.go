@@ -6,6 +6,7 @@ import (
 )
 
 type ProductRepository interface {
+	FindAll() ([]model.Product, error)
 	FindAllByUserID(userID string) ([]model.Product, error)
 	FindByID(id string) (*model.Product, error)
 	Create(p *model.Product) error
@@ -16,6 +17,12 @@ type ProductRepository interface {
 type productRepository struct{ db *gorm.DB }
 
 func NewProductRepository(db *gorm.DB) ProductRepository { return &productRepository{db} }
+
+func (r *productRepository) FindAll() ([]model.Product, error) {
+	var products []model.Product
+	err := r.db.Find(&products).Error
+	return products, err
+}
 
 func (r *productRepository) FindAllByUserID(userID string) ([]model.Product, error) {
 	var p []model.Product

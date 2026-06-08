@@ -4,19 +4,25 @@ import (
 	"net/http"
 
 	"github.com/example/be-panganlink-data-handler/internal/model"
+	"github.com/example/be-panganlink-data-handler/internal/repository"
 	"github.com/example/be-panganlink-data-handler/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
 type PembeliHandler struct {
 	orderService service.OrderService
+	userRepo     repository.UserRepository
 }
 
-func NewPembeliHandler(os service.OrderService) *PembeliHandler {
-	return &PembeliHandler{orderService: os}
+func NewPembeliHandler(os service.OrderService, ur repository.UserRepository) *PembeliHandler {
+	return &PembeliHandler{orderService: os, userRepo: ur}
 }
 
-func (h *PembeliHandler) Dashboard(c *gin.Context) { c.JSON(200, gin.H{"message": "Pembeli dashboard"}) }
+func (h *PembeliHandler) Dashboard(c *gin.Context) {
+	buyerID := c.GetString("user_id")
+	orders, _ := h.orderService.GetBuyerOrders(buyerID)
+	c.JSON(200, gin.H{"message": "Pembeli dashboard", "total_orders": len(orders)})
+}
 
 func (h *PembeliHandler) GetProducts(c *gin.Context) { c.JSON(200, gin.H{"message": "List of products to buy"}) }
 
@@ -72,6 +78,29 @@ func (h *PembeliHandler) UpdateOrderStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Order status updated successfully"})
 }
 
-func (h *PembeliHandler) GetHistory(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
-func (h *PembeliHandler) GetProfile(c *gin.Context) { c.JSON(200, gin.H{"data": "Profile info"}) }
-func (h *PembeliHandler) UpdateProfile(c *gin.Context) { c.JSON(200, gin.H{"message": "Profile updated"}) }
+func (h *PembeliHandler) GetHistory(c *gin.Context) {
+	buyerID := c.GetString("user_id")
+	orders, err := h.orderService.GetBuyerOrders(buyerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	// Filter completed/rejected orders for history
+	c.JSON(200, gin.H{"data": orders})
+}
+
+func (h *PembeliHandler) GetProfile(c *gin.Context) {
+	buyerID := c.GetString("user_id")
+	user, err := h.userRepo.FindByID(buyerID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	user.Password = "" // Hide password
+	c.JSON(200, gin.H{"data": user})
+}
+
+func (h *PembeliHandler) UpdateProfile(c *gin.Context) {
+	// Dummy for now until we add Update logic to user repo
+	c.JSON(200, gin.H{"message": "Profile updated"})
+}

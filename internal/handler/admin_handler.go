@@ -2,7 +2,9 @@ package handler
 
 import (
 	"net/http"
+
 	"github.com/example/be-panganlink-data-handler/internal/model"
+	"github.com/example/be-panganlink-data-handler/internal/repository"
 	"github.com/example/be-panganlink-data-handler/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -10,19 +12,38 @@ import (
 type AdminHandler struct {
 	komoditasService service.KomoditasService
 	aiService        service.AIService
+	userRepo         repository.UserRepository
+	productService   service.ProductService
 }
 
-func NewAdminHandler(ks service.KomoditasService, aiSvc service.AIService) *AdminHandler {
-	return &AdminHandler{komoditasService: ks, aiService: aiSvc}
+func NewAdminHandler(ks service.KomoditasService, aiSvc service.AIService, ur repository.UserRepository, ps service.ProductService) *AdminHandler {
+	return &AdminHandler{komoditasService: ks, aiService: aiSvc, userRepo: ur, productService: ps}
 }
 
-func (h *AdminHandler) Dashboard(c *gin.Context) { c.JSON(200, gin.H{"message": "Admin dashboard data"}) }
-func (h *AdminHandler) GetUsers(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
+func (h *AdminHandler) Dashboard(c *gin.Context) { c.JSON(200, gin.H{"message": "Admin dashboard"}) }
+
+func (h *AdminHandler) GetUsers(c *gin.Context) {
+	c.JSON(200, gin.H{"data": []string{}}) 
+}
+
 func (h *AdminHandler) UpdateUserStatus(c *gin.Context) { c.JSON(200, gin.H{"message": "User status updated"}) }
 
-func (h *AdminHandler) GetProducts(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
-func (h *AdminHandler) ApproveProduct(c *gin.Context) { c.JSON(200, gin.H{"message": "Product approved"}) }
-func (h *AdminHandler) RejectProduct(c *gin.Context) { c.JSON(200, gin.H{"message": "Product rejected"}) }
+func (h *AdminHandler) GetProducts(c *gin.Context) {
+	products, err := h.productService.GetAll()
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"data": products})
+}
+func (h *AdminHandler) ApproveProduct(c *gin.Context) { 
+	h.productService.Update(c.Param("id"), &model.Product{Status: "approved"}) // Mock status update
+	c.JSON(200, gin.H{"message": "Product approved"}) 
+}
+func (h *AdminHandler) RejectProduct(c *gin.Context) { 
+	h.productService.Update(c.Param("id"), &model.Product{Status: "rejected"})
+	c.JSON(200, gin.H{"message": "Product rejected"}) 
+}
 
 func (h *AdminHandler) GetCommodities(c *gin.Context) {
 	res, err := h.komoditasService.GetAll()

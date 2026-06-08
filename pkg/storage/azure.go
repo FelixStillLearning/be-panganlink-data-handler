@@ -30,11 +30,7 @@ func NewAzureHelper(connectionString, containerName string) (*AzureHelper, error
 // UploadFile mengunggah file gambar/dokumen ke Azure Blob Storage
 func (h *AzureHelper) UploadFile(ctx context.Context, file io.Reader, fileName string, contentType string) (string, error) {
 	// Menentukan metadata dan content type agar file bisa dibuka di browser
-	options := &azblob.UploadStreamOptions{
-		HTTPHeaders: &azblob.BlobHTTPHeaders{
-			BlobContentType: &contentType,
-		},
-	}
+	options := &azblob.UploadStreamOptions{}
 
 	_, err := h.client.UploadStream(ctx, h.containerName, fileName, file, options)
 	if err != nil {

@@ -2,7 +2,9 @@ package handler
 
 import (
 	"net/http"
+
 	"github.com/example/be-panganlink-data-handler/internal/model"
+	"github.com/example/be-panganlink-data-handler/internal/repository"
 	"github.com/example/be-panganlink-data-handler/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -11,13 +13,18 @@ type PetaniHandler struct {
 	productService service.ProductService
 	aiService      service.AIService
 	orderService   service.OrderService
+	userRepo       repository.UserRepository
 }
 
-func NewPetaniHandler(ps service.ProductService, aiSvc service.AIService, os service.OrderService) *PetaniHandler {
-	return &PetaniHandler{productService: ps, aiService: aiSvc, orderService: os}
+func NewPetaniHandler(ps service.ProductService, aiSvc service.AIService, os service.OrderService, ur repository.UserRepository) *PetaniHandler {
+	return &PetaniHandler{productService: ps, aiService: aiSvc, orderService: os, userRepo: ur}
 }
 
-func (h *PetaniHandler) Dashboard(c *gin.Context) { c.JSON(200, gin.H{"message": "Petani dashboard"}) }
+func (h *PetaniHandler) Dashboard(c *gin.Context) {
+	petaniID := c.GetString("user_id")
+	orders, _ := h.orderService.GetPetaniOrders(petaniID)
+	c.JSON(200, gin.H{"message": "Petani dashboard", "total_sales_orders": len(orders)})
+}
 
 func (h *PetaniHandler) GetProducts(c *gin.Context) {
 	userId := c.GetString("user_id")
@@ -93,7 +100,12 @@ func (h *PetaniHandler) UpdateOrderStatus(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Order status updated"})
 }
-func (h *PetaniHandler) GetHistory(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
+
+func (h *PetaniHandler) GetHistory(c *gin.Context) { 
+	petaniID := c.GetString("user_id")
+	orders, _ := h.orderService.GetPetaniOrders(petaniID)
+	c.JSON(200, gin.H{"data": orders})
+}
 
 func (h *PetaniHandler) GetRecommendations(c *gin.Context) {
 	komoditasID := c.Query("komoditas_id")
@@ -110,5 +122,15 @@ func (h *PetaniHandler) GetRecommendations(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
 
-func (h *PetaniHandler) GetProfile(c *gin.Context) { c.JSON(200, gin.H{"data": "Profile info"}) }
+func (h *PetaniHandler) GetProfile(c *gin.Context) {
+	petaniID := c.GetString("user_id")
+	user, err := h.userRepo.FindByID(petaniID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	user.Password = ""
+	c.JSON(200, gin.H{"data": user})
+}
+
 func (h *PetaniHandler) UpdateProfile(c *gin.Context) { c.JSON(200, gin.H{"message": "Profile updated"}) }

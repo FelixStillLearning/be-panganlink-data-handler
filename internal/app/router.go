@@ -1,17 +1,30 @@
 package app
 
 import (
+	"time"
 	"github.com/example/be-panganlink-data-handler/internal/config"
 	"github.com/example/be-panganlink-data-handler/internal/handler"
 	"github.com/example/be-panganlink-data-handler/internal/middleware"
 	"github.com/example/be-panganlink-data-handler/internal/repository"
 	"github.com/example/be-panganlink-data-handler/internal/service"
+	"github.com/example/be-panganlink-data-handler/pkg/storage"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	r := gin.Default()
+
+	// CORS Middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // Adjust for production
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Dependency Injection
 	userRepo := repository.NewUserRepository(db)
@@ -27,12 +40,23 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	paymentSvc := service.NewPaymentService(cfg.MidtransServerKey, false)
 	orderSvc := service.NewOrderService(orderRepo, paymentSvc)
 
+	// Cloud Storage
+	var azureHelper *storage.AzureHelper
+	if cfg.AzureAccountName != "" {
+		// NewAzureHelper now expects connectionString and containerName
+		// We'll pass AccountKey as the connection string or modify NewAzureHelper.
+		// Usually ConnectionString looks like: DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net
+		connStr := "DefaultEndpointsProtocol=https;AccountName=" + cfg.AzureAccountName + ";AccountKey=" + cfg.AzureAccountKey + ";EndpointSuffix=core.windows.net"
+		azureHelper, _ = storage.NewAzureHelper(connStr, cfg.AzureContainerName)
+	}
+
 	authHandler := handler.NewAuthHandler(authSvc)
 	publicHandler := handler.NewPublicHandler(komoditasSvc)
-	adminHandler := handler.NewAdminHandler(komoditasSvc, aiSvc)
-	petaniHandler := handler.NewPetaniHandler(productSvc, aiSvc, orderSvc)
-	pembeliHandler := handler.NewPembeliHandler(orderSvc)
+	adminHandler := handler.NewAdminHandler(komoditasSvc, aiSvc, userRepo, productSvc)
+	petaniHandler := handler.NewPetaniHandler(productSvc, aiSvc, orderSvc, userRepo)
+	pembeliHandler := handler.NewPembeliHandler(orderSvc, userRepo)
 	paymentHandler := handler.NewPaymentHandler(orderSvc)
+	uploadHandler := handler.NewUploadHandler(azureHelper)
 
 	// Routes
 	api := r.Group("/api/v1")
@@ -45,6 +69,9 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			public.GET("/commodities", publicHandler.GetCommodities)
 			public.GET("/testimonials", publicHandler.GetTestimonials)
 		}
+
+		// Let's add upload as public for now, or authenticated. We will add it under /upload
+		api.POST("/upload", uploadHandler.UploadImage)
 
 		auth := api.Group("/auth")
 		{
