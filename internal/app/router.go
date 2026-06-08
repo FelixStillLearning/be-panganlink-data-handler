@@ -58,7 +58,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 	authHandler := handler.NewAuthHandler(authSvc)
 	publicHandler := handler.NewPublicHandler(komoditasSvc)
-	adminHandler := handler.NewAdminHandler(komoditasSvc, aiSvc, userRepo, productSvc)
+	adminHandler := handler.NewAdminHandler(db, komoditasSvc, aiSvc, userRepo, productSvc)
 	petaniHandler := handler.NewPetaniHandler(productSvc, aiSvc, orderSvc, userRepo)
 	pembeliHandler := handler.NewPembeliHandler(orderSvc, userRepo)
 	paymentHandler := handler.NewPaymentHandler(orderSvc)
@@ -121,6 +121,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			
 			admin.GET("/market-prices", adminHandler.GetMarketPrices)
 			admin.POST("/market-prices", adminHandler.CreateMarketPrice)
+			admin.DELETE("/market-prices/:id", adminHandler.DeleteMarketPrice)
 			admin.GET("/price-trends", adminHandler.GetPriceTrends)
 			
 			admin.GET("/settings", adminHandler.GetSettings)
