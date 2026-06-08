@@ -9,10 +9,11 @@ import (
 
 type PetaniHandler struct {
 	productService service.ProductService
+	aiService      service.AIService
 }
 
-func NewPetaniHandler(ps service.ProductService) *PetaniHandler {
-	return &PetaniHandler{productService: ps}
+func NewPetaniHandler(ps service.ProductService, aiSvc service.AIService) *PetaniHandler {
+	return &PetaniHandler{productService: ps, aiService: aiSvc}
 }
 
 func (h *PetaniHandler) Dashboard(c *gin.Context) { c.JSON(200, gin.H{"message": "Petani dashboard"}) }
@@ -69,7 +70,20 @@ func (h *PetaniHandler) GetOrders(c *gin.Context) { c.JSON(200, gin.H{"data": []
 func (h *PetaniHandler) UpdateOrderStatus(c *gin.Context) { c.JSON(200, gin.H{"message": "Order status updated"}) }
 func (h *PetaniHandler) GetHistory(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
 
-func (h *PetaniHandler) GetRecommendations(c *gin.Context) { c.JSON(200, gin.H{"data": "AI recommendations"}) }
+func (h *PetaniHandler) GetRecommendations(c *gin.Context) {
+	komoditasID := c.Query("komoditas_id")
+	if komoditasID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "komoditas_id query parameter is required"})
+		return
+	}
+
+	res, err := h.aiService.GetRecommendation(komoditasID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
 
 func (h *PetaniHandler) GetProfile(c *gin.Context) { c.JSON(200, gin.H{"data": "Profile info"}) }
 func (h *PetaniHandler) UpdateProfile(c *gin.Context) { c.JSON(200, gin.H{"message": "Profile updated"}) }

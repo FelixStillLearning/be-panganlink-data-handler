@@ -21,11 +21,12 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	authSvc := service.NewAuthService(userRepo, cfg)
 	komoditasSvc := service.NewKomoditasService(komoditasRepo)
 	productSvc := service.NewProductService(productRepo)
+	aiSvc := service.NewAIService(cfg.AIServiceURL)
 
 	authHandler := handler.NewAuthHandler(authSvc)
 	publicHandler := handler.NewPublicHandler(komoditasSvc)
-	adminHandler := handler.NewAdminHandler(komoditasSvc)
-	petaniHandler := handler.NewPetaniHandler(productSvc)
+	adminHandler := handler.NewAdminHandler(komoditasSvc, aiSvc)
+	petaniHandler := handler.NewPetaniHandler(productSvc, aiSvc)
 
 	// Routes
 	api := r.Group("/api/v1")

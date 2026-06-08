@@ -9,10 +9,11 @@ import (
 
 type AdminHandler struct {
 	komoditasService service.KomoditasService
+	aiService        service.AIService
 }
 
-func NewAdminHandler(ks service.KomoditasService) *AdminHandler {
-	return &AdminHandler{komoditasService: ks}
+func NewAdminHandler(ks service.KomoditasService, aiSvc service.AIService) *AdminHandler {
+	return &AdminHandler{komoditasService: ks, aiService: aiSvc}
 }
 
 func (h *AdminHandler) Dashboard(c *gin.Context) { c.JSON(200, gin.H{"message": "Admin dashboard data"}) }
@@ -71,7 +72,20 @@ func (h *AdminHandler) DeleteCommodity(c *gin.Context) {
 func (h *AdminHandler) GetMarketPrices(c *gin.Context) { c.JSON(200, gin.H{"data": []string{}}) }
 func (h *AdminHandler) CreateMarketPrice(c *gin.Context) { c.JSON(200, gin.H{"message": "Market price added"}) }
 
-func (h *AdminHandler) GetPriceTrends(c *gin.Context) { c.JSON(200, gin.H{"data": "Price trends from AI"}) }
+func (h *AdminHandler) GetPriceTrends(c *gin.Context) {
+	komoditasID := c.Query("komoditas_id")
+	if komoditasID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "komoditas_id query parameter is required"})
+		return
+	}
+
+	res, err := h.aiService.GetForecast(komoditasID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
 
 func (h *AdminHandler) GetSettings(c *gin.Context) { c.JSON(200, gin.H{"data": "Settings"}) }
 func (h *AdminHandler) UpdateSettings(c *gin.Context) { c.JSON(200, gin.H{"message": "Settings updated"}) }
