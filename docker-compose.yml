@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: be_data_handler_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password  # Sesuaikan dengan DB_PASS di .env
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - data_handler_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  data_handler_db_data:
