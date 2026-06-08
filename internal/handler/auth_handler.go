@@ -49,14 +49,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 func (h *AuthHandler) Me(c *gin.Context) {
 	userId := c.GetString("user_id")
-	role := c.GetString("role")
-	// Idealnya fetch full profil user dari database via AuthService
+	
+	user, err := h.authService.GetProfile(userId)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	user.Password = "" // Hide password
+	
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User profile retrieved",
-		"user": gin.H{
-			"id":   userId,
-			"role": role,
-		},
+		"user":    user,
 	})
 }
 

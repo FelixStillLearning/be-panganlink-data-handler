@@ -22,8 +22,39 @@ func NewPetaniHandler(ps service.ProductService, aiSvc service.AIService, os ser
 
 func (h *PetaniHandler) Dashboard(c *gin.Context) {
 	petaniID := c.GetString("user_id")
+	
+	products, _ := h.productService.GetByUserID(petaniID)
+	totalProducts := len(products)
+	pendingApprove := 0
+	for _, p := range products {
+		if p.Status == "pending" {
+			pendingApprove++
+		}
+	}
+
 	orders, _ := h.orderService.GetPetaniOrders(petaniID)
-	c.JSON(200, gin.H{"message": "Petani dashboard", "total_sales_orders": len(orders)})
+	ordersPending := 0
+	var salesThisMonth float64 = 0
+	
+	for _, o := range orders {
+		if o.Status == "pending" || o.Status == "menunggu" {
+			ordersPending++
+		}
+		if o.Status == "selesai" || o.Status == "success" {
+			salesThisMonth += o.TotalHarga
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Petani dashboard",
+		"data": gin.H{
+			"total_products": totalProducts,
+			"pending_approve": pendingApprove,
+			"orders_pending": ordersPending,
+			"sales_this_month": salesThisMonth,
+			"recent_orders": orders,
+		},
+	})
 }
 
 func (h *PetaniHandler) GetProducts(c *gin.Context) {

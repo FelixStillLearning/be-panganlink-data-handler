@@ -15,6 +15,7 @@ import (
 type AuthService interface {
 	Register(req RegisterRequest) (*model.User, error)
 	Login(req LoginRequest) (string, error)
+	GetProfile(userID string) (*model.User, error)
 }
 
 type authService struct {
@@ -90,3 +91,8 @@ func (s *authService) Login(req LoginRequest) (string, error) {
 
 	return tokenString, nil
 }
+
+func (s *authService) GetProfile(userID string) (*model.User, error) {
+	return s.userRepo.FindByID(userID)
+}
+
