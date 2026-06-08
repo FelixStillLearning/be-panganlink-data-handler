@@ -19,3 +19,7 @@
 
 # Environment variables
 .env
+
+# Local env files
+.env.local
+.env.development
