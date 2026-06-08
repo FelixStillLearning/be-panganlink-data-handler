@@ -11,6 +11,8 @@ type User struct {
 	Password  string    `gorm:"type:varchar(255);not null" json:"-"` // Not exposed in JSON
 	Role      string    `gorm:"type:varchar(20);not null" json:"role"` // petani, pembeli, admin
 	Location  string    `gorm:"type:varchar(100)" json:"location"`
+	Phone     string    `gorm:"type:varchar(20)" json:"phone"`
+	FarmName  string    `gorm:"type:varchar(100)" json:"farm_name"`
 	FotoURL   string    `gorm:"type:text" json:"foto_url"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
