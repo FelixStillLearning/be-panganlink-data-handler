@@ -59,6 +59,15 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	uploadHandler := handler.NewUploadHandler(azureHelper)
 	notifHandler := handler.NewNotificationHandler(notifRepo)
 
+	// Background Job: Cancel expired orders every hour
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			orderSvc.CancelExpiredOrders()
+		}
+	}()
+
 	// Routes
 	api := r.Group("/api/v1")
 	{

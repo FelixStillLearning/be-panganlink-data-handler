@@ -14,6 +14,7 @@ type OrderService interface {
 	GetPetaniOrders(petaniID string) ([]model.Order, error)
 	UpdateOrderStatus(orderID, status string) error
 	HandleMidtransWebhook(payload map[string]interface{}) error
+	CancelExpiredOrders() error
 }
 
 type orderService struct {
@@ -42,8 +43,8 @@ func (s *orderService) Checkout(buyerID string, items []model.OrderItem) (*model
 		Items:      items,
 	}
 
-	// Buat di DB
-	if err := s.repo.Create(order); err != nil {
+	// Buat di DB dengan Transaksi (Lock Stok & ACID)
+	if err := s.repo.CreateCheckoutTransaction(order); err != nil {
 		return nil, err
 	}
 
@@ -113,4 +114,28 @@ func (s *orderService) HandleMidtransWebhook(payload map[string]interface{}) err
 	}
 
 	return s.repo.UpdatePaymentStatus(orderID, status, "midtrans", "", paidAt)
+}
+
+func (s *orderService) CancelExpiredOrders() error {
+	// Let's say expiration time is 24 hours
+	expiryTime := time.Now().Add(-24 * time.Hour)
+	orders, err := s.repo.FindExpiredOrders(expiryTime)
+	if err != nil {
+		return err
+	}
+
+	for _, order := range orders {
+		if err := s.repo.CancelExpiredOrderTransaction(&order); err != nil {
+			// Log error but continue to next order
+			fmt.Printf("Failed to cancel expired order %s: %v\n", order.ID, err)
+		} else {
+			// Notify buyer that order is canceled
+			s.notifRepo.Create(&model.Notification{
+				UserID:  order.BuyerID,
+				Title:   "Pesanan Dibatalkan Otomatis",
+				Message: fmt.Sprintf("Pesanan %s telah dibatalkan karena melewati batas waktu pembayaran 24 jam.", order.ID),
+			})
+		}
+	}
+	return nil
 }

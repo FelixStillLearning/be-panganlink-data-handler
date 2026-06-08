@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/example/be-panganlink-data-handler/internal/model"
@@ -14,6 +15,9 @@ type OrderRepository interface {
 	FindByPetaniID(petaniID string) ([]model.Order, error)
 	UpdatePaymentStatus(orderID, status, method, reference string, paidAt *time.Time) error
 	UpdateStatus(orderID, status string) error
+	CreateCheckoutTransaction(order *model.Order) error
+	FindExpiredOrders(before time.Time) ([]model.Order, error)
+	CancelExpiredOrderTransaction(order *model.Order) error
 }
 
 type orderRepository struct {
@@ -70,4 +74,47 @@ func (r *orderRepository) UpdatePaymentStatus(orderID, status, method, reference
 
 func (r *orderRepository) UpdateStatus(orderID, status string) error {
 	return r.db.Model(&model.Order{}).Where("id = ?", orderID).Update("status", status).Error
+}
+
+func (r *orderRepository) CreateCheckoutTransaction(order *model.Order) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Lock products and deduct stock
+		for _, item := range order.Items {
+			var product model.Product
+			// SELECT ... FOR UPDATE
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&product, "id = ?", item.ProductID).Error; err != nil {
+				return err
+			}
+			if product.Stok < item.Jumlah {
+				return fmt.Errorf("insufficient stock for product %s", product.ID)
+			}
+			product.Stok -= item.Jumlah
+			if err := tx.Save(&product).Error; err != nil {
+				return err
+			}
+		}
+		// Create Order and Items
+		return tx.Create(order).Error
+	})
+}
+
+func (r *orderRepository) FindExpiredOrders(before time.Time) ([]model.Order, error) {
+	var orders []model.Order
+	err := r.db.Preload("Items").Where("status = ? AND created_at < ?", "pending", before).Find(&orders).Error
+	return orders, err
+}
+
+func (r *orderRepository) CancelExpiredOrderTransaction(order *model.Order) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Return stock
+		for _, item := range order.Items {
+			var product model.Product
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&product, "id = ?", item.ProductID).Error; err == nil {
+				product.Stok += item.Jumlah
+				tx.Save(&product)
+			}
+		}
+		// Mark as canceled
+		return tx.Model(order).Update("status", "canceled").Error
+	})
 }
