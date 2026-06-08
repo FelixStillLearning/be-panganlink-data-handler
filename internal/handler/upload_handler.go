@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/example/be-panganlink-data-handler/pkg/storage"
 	"github.com/gin-gonic/gin"
@@ -24,7 +25,20 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 	defer file.Close()
 
 	if h.azureHelper == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Azure storage is not configured"})
+		// Ensure directory exists
+		os.MkdirAll("public/uploads", os.ModePerm)
+		
+		// Fallback to local storage if Azure is not configured
+		err = c.SaveUploadedFile(header, "public/uploads/"+header.Filename)
+		if err != nil {
+			// Ensure directory exists
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file locally: " + err.Error()})
+			return
+		}
+		
+		// Return local URL
+		fileURL := "http://localhost:8080/uploads/" + header.Filename
+		c.JSON(http.StatusOK, gin.H{"message": "File uploaded locally", "url": fileURL})
 		return
 	}
 

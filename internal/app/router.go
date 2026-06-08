@@ -16,6 +16,9 @@ import (
 func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	r := gin.Default()
 
+	// Serve Static Files (Local uploads fallback)
+	r.Static("/uploads", "./public/uploads")
+
 	// CORS Middleware
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"}, // Adjust for production

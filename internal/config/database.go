@@ -51,6 +51,9 @@ func InitDatabase(cfg *Config) *gorm.DB {
 
 	// Seeder for Super Admin
 	seedSuperAdmin(db)
+	
+	// Seeder for Default Commodities
+	seedKomoditas(db)
 
 	log.Println("Database connection established")
 	return db
@@ -70,5 +73,22 @@ func seedSuperAdmin(db *gorm.DB) {
 		}
 		db.Create(&admin)
 		log.Println("Super Admin seeded automatically (admin@panganlink.com / admin123)")
+	}
+}
+
+func seedKomoditas(db *gorm.DB) {
+	var count int64
+	db.Model(&model.Komoditas{}).Count(&count)
+	if count == 0 {
+		commodities := []model.Komoditas{
+			{ID: "KMD-001", Nama: "Beras Rojolele", Satuan: "kg", Kategori: "Beras"},
+			{ID: "KMD-002", Nama: "Cabai Merah Keriting", Satuan: "kg", Kategori: "Sayuran"},
+			{ID: "KMD-003", Nama: "Bawang Merah", Satuan: "kg", Kategori: "Bumbu Dapur"},
+			{ID: "KMD-004", Nama: "Tomat Sayur", Satuan: "kg", Kategori: "Sayuran"},
+			{ID: "KMD-005", Nama: "Jagung Manis", Satuan: "kg", Kategori: "Sayuran"},
+			{ID: "KMD-006", Nama: "Kacang Tanah", Satuan: "kg", Kategori: "Kacang-kacangan"},
+		}
+		db.Create(&commodities)
+		log.Println("Default commodities seeded automatically")
 	}
 }
