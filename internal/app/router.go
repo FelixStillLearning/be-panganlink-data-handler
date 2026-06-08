@@ -15,25 +15,30 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 	// Dependency Injection
 	userRepo := repository.NewUserRepository(db)
+	komoditasRepo := repository.NewKomoditasRepository(db)
+	productRepo := repository.NewProductRepository(db)
+
 	authSvc := service.NewAuthService(userRepo, cfg)
+	komoditasSvc := service.NewKomoditasService(komoditasRepo)
+	productSvc := service.NewProductService(productRepo)
+
 	authHandler := handler.NewAuthHandler(authSvc)
+	publicHandler := handler.NewPublicHandler(komoditasSvc)
+	adminHandler := handler.NewAdminHandler(komoditasSvc)
+	petaniHandler := handler.NewPetaniHandler(productSvc)
 
 	// Routes
 	api := r.Group("/api/v1")
 	{
-		api.GET("/health", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "ok"})
-		})
+		api.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 
-		// 1. Public Routes
 		public := api.Group("/public")
 		{
-			public.GET("/stats", handler.GetPublicStats)
-			public.GET("/commodities", handler.GetPublicCommodities)
-			public.GET("/testimonials", handler.GetPublicTestimonials)
+			public.GET("/stats", publicHandler.GetStats)
+			public.GET("/commodities", publicHandler.GetCommodities)
+			public.GET("/testimonials", publicHandler.GetTestimonials)
 		}
 
-		// 2. Auth Routes
 		auth := api.Group("/auth")
 		{
 			auth.POST("/register", authHandler.Register)
@@ -42,50 +47,48 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			auth.POST("/logout", middleware.RequireAuth(cfg.JWTSecret), authHandler.Logout)
 		}
 
-		// 3. Admin Routes
 		admin := api.Group("/admin")
 		admin.Use(middleware.RequireAuth(cfg.JWTSecret, "admin"))
 		{
-			admin.GET("/dashboard", handler.AdminDashboard)
-			admin.GET("/users", handler.AdminGetUsers)
-			admin.PUT("/users/:id/status", handler.AdminUpdateUserStatus)
+			admin.GET("/dashboard", adminHandler.Dashboard)
+			admin.GET("/users", adminHandler.GetUsers)
+			admin.PUT("/users/:id/status", adminHandler.UpdateUserStatus)
 			
-			admin.GET("/products", handler.AdminGetProducts)
-			admin.PUT("/products/:id/approve", handler.AdminApproveProduct)
-			admin.PUT("/products/:id/reject", handler.AdminRejectProduct)
+			admin.GET("/products", adminHandler.GetProducts)
+			admin.PUT("/products/:id/approve", adminHandler.ApproveProduct)
+			admin.PUT("/products/:id/reject", adminHandler.RejectProduct)
 			
-			admin.GET("/commodities", handler.AdminGetCommodities)
-			admin.POST("/commodities", handler.AdminCreateCommodity)
-			admin.PUT("/commodities/:id", handler.AdminUpdateCommodity)
-			admin.DELETE("/commodities/:id", handler.AdminDeleteCommodity)
+			admin.GET("/commodities", adminHandler.GetCommodities)
+			admin.POST("/commodities", adminHandler.CreateCommodity)
+			admin.PUT("/commodities/:id", adminHandler.UpdateCommodity)
+			admin.DELETE("/commodities/:id", adminHandler.DeleteCommodity)
 			
-			admin.GET("/market-prices", handler.AdminGetMarketPrices)
-			admin.POST("/market-prices", handler.AdminCreateMarketPrice)
-			admin.GET("/price-trends", handler.AdminGetPriceTrends)
+			admin.GET("/market-prices", adminHandler.GetMarketPrices)
+			admin.POST("/market-prices", adminHandler.CreateMarketPrice)
+			admin.GET("/price-trends", adminHandler.GetPriceTrends)
 			
-			admin.GET("/settings", handler.AdminGetSettings)
-			admin.PUT("/settings", handler.AdminUpdateSettings)
+			admin.GET("/settings", adminHandler.GetSettings)
+			admin.PUT("/settings", adminHandler.UpdateSettings)
 		}
 
-		// 4. Petani Routes
 		petani := api.Group("/petani")
 		petani.Use(middleware.RequireAuth(cfg.JWTSecret, "petani"))
 		{
-			petani.GET("/dashboard", handler.PetaniDashboard)
+			petani.GET("/dashboard", petaniHandler.Dashboard)
 			
-			petani.GET("/products", handler.PetaniGetProducts)
-			petani.POST("/products", handler.PetaniCreateProduct)
-			petani.PUT("/products/:id", handler.PetaniUpdateProduct)
-			petani.DELETE("/products/:id", handler.PetaniDeleteProduct)
+			petani.GET("/products", petaniHandler.GetProducts)
+			petani.POST("/products", petaniHandler.CreateProduct)
+			petani.PUT("/products/:id", petaniHandler.UpdateProduct)
+			petani.DELETE("/products/:id", petaniHandler.DeleteProduct)
 			
-			petani.GET("/orders", handler.PetaniGetOrders)
-			petani.PUT("/orders/:id/status", handler.PetaniUpdateOrderStatus)
-			petani.GET("/history", handler.PetaniGetHistory)
+			petani.GET("/orders", petaniHandler.GetOrders)
+			petani.PUT("/orders/:id/status", petaniHandler.UpdateOrderStatus)
+			petani.GET("/history", petaniHandler.GetHistory)
 			
-			petani.GET("/recommendations", handler.PetaniGetRecommendations)
+			petani.GET("/recommendations", petaniHandler.GetRecommendations)
 			
-			petani.GET("/profile", handler.PetaniGetProfile)
-			petani.PUT("/profile", handler.PetaniUpdateProfile)
+			petani.GET("/profile", petaniHandler.GetProfile)
+			petani.PUT("/profile", petaniHandler.UpdateProfile)
 		}
 	}
 
