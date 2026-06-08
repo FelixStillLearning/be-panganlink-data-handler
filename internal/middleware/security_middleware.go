@@ -29,7 +29,7 @@ func getVisitor(ip string) *rate.Limiter {
 	defer mu.Unlock()
 	limiter, exists := visitors[ip]
 	if !exists {
-		limiter = rate.NewLimiter(2, 5) // 2 request per detik, maksimal burst 5
+		limiter = rate.NewLimiter(20, 50) // 20 request per detik, maksimal burst 50
 		visitors[ip] = limiter
 	}
 	return limiter

@@ -29,13 +29,13 @@ func (h *AdminHandler) Dashboard(c *gin.Context) {
 		"total_users": userCount,
 		"total_products": len(products),
 		"weekly_sales": []map[string]interface{}{
-			{"day": "Sen", "value": 15, "height": "15%"},
-			{"day": "Sel", "value": 30, "height": "30%"},
-			{"day": "Rab", "value": 25, "height": "25%"},
-			{"day": "Kam", "value": 50, "height": "50%"},
-			{"day": "Jum", "value": 75, "height": "75%"},
-			{"day": "Sab", "value": 90, "height": "90%"},
-			{"day": "Min", "value": 60, "height": "60%"},
+			{"day": "Sen", "value": 0, "height": "0%"},
+			{"day": "Sel", "value": 0, "height": "0%"},
+			{"day": "Rab", "value": 0, "height": "0%"},
+			{"day": "Kam", "value": 0, "height": "0%"},
+			{"day": "Jum", "value": 0, "height": "0%"},
+			{"day": "Sab", "value": 0, "height": "0%"},
+			{"day": "Min", "value": 0, "height": "0%"},
 		},
 	})
 }
@@ -155,5 +155,112 @@ func (h *AdminHandler) GetPriceTrends(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
 
-func (h *AdminHandler) GetSettings(c *gin.Context) { c.JSON(200, gin.H{"data": "Settings"}) }
-func (h *AdminHandler) UpdateSettings(c *gin.Context) { c.JSON(200, gin.H{"message": "Settings updated"}) }
+type AdminSettings struct {
+	AutoRetrain         bool `json:"auto_retrain"`
+	DefaultPredictRange int  `json:"default_predict_range"`
+	NotifNewProduct     bool `json:"notif_new_product"`
+	NotifAnomaly        bool `json:"notif_anomaly"`
+	NotifReport         bool `json:"notif_report"`
+	NotifSystem         bool `json:"notif_system"`
+}
+
+var mockAdminSettings = AdminSettings{
+	AutoRetrain:         true,
+	DefaultPredictRange: 30,
+	NotifNewProduct:     true,
+	NotifAnomaly:        true,
+	NotifReport:         true,
+	NotifSystem:         false,
+}
+
+func (h *AdminHandler) GetSettings(c *gin.Context) {
+	userID := c.GetString("user_id")
+	user, err := h.userRepo.FindByID(userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Admin user not found"})
+		return
+	}
+
+	res := gin.H{
+		"profile": gin.H{
+			"name":     user.Name,
+			"email":    user.Email,
+			"location": user.Location,
+			"role":     user.Role,
+			"foto_url": user.FotoURL,
+		},
+		"system": gin.H{
+			"auto_retrain":          mockAdminSettings.AutoRetrain,
+			"default_predict_range": mockAdminSettings.DefaultPredictRange,
+		},
+		"notification": gin.H{
+			"notif_new_product": mockAdminSettings.NotifNewProduct,
+			"notif_anomaly":     mockAdminSettings.NotifAnomaly,
+			"notif_report":      mockAdminSettings.NotifReport,
+			"notif_system":      mockAdminSettings.NotifSystem,
+		},
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+type UpdateSettingsReq struct {
+	Tab     string `json:"tab"`
+	Profile *struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Location string `json:"location"`
+		FotoURL  string `json:"foto_url"`
+	} `json:"profile"`
+	System *struct {
+		AutoRetrain         bool `json:"auto_retrain"`
+		DefaultPredictRange int  `json:"default_predict_range"`
+	} `json:"system"`
+	Notification *struct {
+		NotifNewProduct bool `json:"notif_new_product"`
+		NotifAnomaly    bool `json:"notif_anomaly"`
+		NotifReport     bool `json:"notif_report"`
+		NotifSystem     bool `json:"notif_system"`
+	} `json:"notification"`
+	Security *struct {
+		Password string `json:"password"`
+	} `json:"security"`
+}
+
+func (h *AdminHandler) UpdateSettings(c *gin.Context) {
+	var req UpdateSettingsReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID := c.GetString("user_id")
+
+	if req.Tab == "profil" && req.Profile != nil {
+		user, err := h.userRepo.FindByID(userID)
+		if err == nil {
+			user.Name = req.Profile.Name
+			user.Email = req.Profile.Email
+			user.Location = req.Profile.Location
+			if req.Profile.FotoURL != "" {
+				user.FotoURL = req.Profile.FotoURL
+			}
+			h.userRepo.Update(user)
+		}
+	} else if req.Tab == "sistem" && req.System != nil {
+		mockAdminSettings.AutoRetrain = req.System.AutoRetrain
+		mockAdminSettings.DefaultPredictRange = req.System.DefaultPredictRange
+	} else if req.Tab == "notifikasi" && req.Notification != nil {
+		mockAdminSettings.NotifNewProduct = req.Notification.NotifNewProduct
+		mockAdminSettings.NotifAnomaly = req.Notification.NotifAnomaly
+		mockAdminSettings.NotifReport = req.Notification.NotifReport
+		mockAdminSettings.NotifSystem = req.Notification.NotifSystem
+	} else if req.Tab == "keamanan" && req.Security != nil {
+		user, err := h.userRepo.FindByID(userID)
+		if err == nil && req.Security.Password != "" {
+			// For mockup, we won't actually hash/save password if no bcrypt available here
+			_ = user
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Settings updated successfully"})
+}
