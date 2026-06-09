@@ -69,10 +69,14 @@ func (h *AdminHandler) Dashboard(c *gin.Context) {
 		})
 	}
 
+	var orderCount int64
+	h.db.Model(&model.Order{}).Count(&orderCount)
+
 	c.JSON(200, gin.H{
 		"message": "Admin dashboard",
 		"total_users": userCount,
 		"total_products": len(products),
+		"total_orders": orderCount,
 		"weekly_sales": weeklySales,
 	})
 }
