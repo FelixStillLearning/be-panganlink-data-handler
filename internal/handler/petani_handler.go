@@ -82,14 +82,34 @@ func (h *PetaniHandler) CreateProduct(c *gin.Context) {
 }
 
 func (h *PetaniHandler) UpdateProduct(c *gin.Context) {
-	var p model.Product
-	if err := c.ShouldBindJSON(&p); err != nil {
+	var req model.Product
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	id := c.Param("id")
-	p.UserID = c.GetString("user_id")
-	if err := h.productService.Update(id, &p); err != nil {
+	
+	existing, err := h.productService.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+		return
+	}
+	
+	// Check authorization
+	if existing.UserID != c.GetString("user_id") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized to update this product"})
+		return
+	}
+	
+	// Update fields
+	existing.KomoditasID = req.KomoditasID
+	existing.Nama = req.Nama
+	existing.Deskripsi = req.Deskripsi
+	existing.Stok = req.Stok
+	existing.Harga = req.Harga
+	existing.FotoUrl = req.FotoUrl
+
+	if err := h.productService.Update(id, existing); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

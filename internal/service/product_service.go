@@ -9,6 +9,7 @@ import (
 type ProductService interface {
 	GetAll(page, limit int) ([]model.Product, error)
 	GetByUserID(userID string) ([]model.Product, error)
+	GetByID(id string) (*model.Product, error)
 	Create(p *model.Product) error
 	Update(id string, p *model.Product) error
 	Delete(id string) error
@@ -20,6 +21,7 @@ func NewProductService(repo repository.ProductRepository) ProductService { retur
 
 func (s *productService) GetAll(page, limit int) ([]model.Product, error) { return s.repo.FindAll(page, limit) }
 func (s *productService) GetByUserID(userID string) ([]model.Product, error) { return s.repo.FindAllByUserID(userID) }
+func (s *productService) GetByID(id string) (*model.Product, error) { return s.repo.FindByID(id) }
 func (s *productService) Create(p *model.Product) error {
 	p.ID = uuid.New().String()
 	p.Status = "pending"
