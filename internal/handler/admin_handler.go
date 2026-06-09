@@ -115,11 +115,23 @@ func (h *AdminHandler) GetProducts(c *gin.Context) {
 	c.JSON(200, gin.H{"data": products, "page": page, "limit": limit})
 }
 func (h *AdminHandler) ApproveProduct(c *gin.Context) { 
-	h.productService.Update(c.Param("id"), &model.Product{Status: "approved"}) // Mock status update
+	var p model.Product
+	if err := h.db.First(&p, "id = ?", c.Param("id")).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Product not found"})
+		return
+	}
+	p.Status = "approved"
+	h.db.Save(&p)
 	c.JSON(200, gin.H{"message": "Product approved"}) 
 }
 func (h *AdminHandler) RejectProduct(c *gin.Context) { 
-	h.productService.Update(c.Param("id"), &model.Product{Status: "rejected"})
+	var p model.Product
+	if err := h.db.First(&p, "id = ?", c.Param("id")).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Product not found"})
+		return
+	}
+	p.Status = "rejected"
+	h.db.Save(&p)
 	c.JSON(200, gin.H{"message": "Product rejected"}) 
 }
 

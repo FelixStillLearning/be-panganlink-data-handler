@@ -17,6 +17,8 @@ type Product struct {
 	ID          string    `gorm:"type:varchar(36);primaryKey" json:"id"`
 	UserID      string    `gorm:"type:varchar(36)" json:"user_id"`
 	KomoditasID string    `gorm:"type:varchar(20)" json:"komoditas_id"`
+	Nama        string    `gorm:"type:varchar(100);not null" json:"nama"`
+	Deskripsi   string    `gorm:"type:text" json:"deskripsi"`
 	Harga       float64   `gorm:"type:decimal(12,2);not null" json:"harga"`
 	Stok        float64   `gorm:"type:decimal(10,2);not null" json:"stok"`
 	FotoUrl     string    `gorm:"type:text" json:"foto_url"`
