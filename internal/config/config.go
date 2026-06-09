@@ -15,10 +15,11 @@ type Config struct {
 	ServerPort        string
 	JWTSecret         string
 	AIServiceURL      string 
-	MidtransServerKey string 
-	AzureAccountName  string
-	AzureAccountKey   string
-	AzureContainerName string
+	MidtransServerKey    string 
+	MidtransIsProduction bool
+	AzureAccountName     string
+	AzureAccountKey      string
+	AzureContainerName   string
 }
 
 func LoadConfig() *Config {
@@ -37,6 +38,7 @@ func LoadConfig() *Config {
 		JWTSecret:         getEnv("JWT_SECRET", "supersecretkey_panganlink"),
 		AIServiceURL:      getEnv("AI_SERVICE_URL", "http://ai-service:8000/api/v1"),
 		MidtransServerKey: getEnv("MIDTRANS_SERVER_KEY", "SB-Mid-server-YOURKEYHERE"),
+		MidtransIsProduction: getEnv("MIDTRANS_IS_PRODUCTION", "false") == "true",
 		AzureAccountName:  getEnv("AZURE_STORAGE_ACCOUNT_NAME", ""),
 		AzureAccountKey:   getEnv("AZURE_STORAGE_ACCOUNT_KEY", ""),
 		AzureContainerName: getEnv("AZURE_STORAGE_CONTAINER_NAME", "panganlink"),

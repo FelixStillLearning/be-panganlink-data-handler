@@ -46,7 +46,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	komoditasSvc := service.NewKomoditasService(komoditasRepo)
 	productSvc := service.NewProductService(productRepo)
 	aiSvc := service.NewAIService(cfg.AIServiceURL)
-	paymentSvc := service.NewPaymentService(cfg.MidtransServerKey, false)
+	paymentSvc := service.NewPaymentService(cfg.MidtransServerKey, cfg.MidtransIsProduction)
 	orderSvc := service.NewOrderService(orderRepo, paymentSvc, notifRepo)
 
 	// Cloud Storage
