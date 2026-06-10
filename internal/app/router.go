@@ -126,6 +126,8 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			admin.POST("/market-prices", adminHandler.CreateMarketPrice)
 			admin.DELETE("/market-prices/:id", adminHandler.DeleteMarketPrice)
 			admin.GET("/price-trends", adminHandler.GetPriceTrends)
+			admin.POST("/ai-sync/update", adminHandler.UpdateAISync)
+			admin.DELETE("/ai-sync/delete", adminHandler.DeleteAISync)
 			
 			admin.GET("/settings", adminHandler.GetSettings)
 			admin.PUT("/settings", adminHandler.UpdateSettings)
