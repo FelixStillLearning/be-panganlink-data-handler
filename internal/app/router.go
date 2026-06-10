@@ -14,6 +14,11 @@ import (
 )
 
 func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
+	// Clean up existing localhost:8080 URLs to use the production Backend ALB DNS
+	albDNS := "panganlink-be-alb-95099952.ap-southeast-1.elb.amazonaws.com"
+	db.Exec("UPDATE products SET foto_url = REPLACE(foto_url, 'http://localhost:8080/uploads/', ?)", "http://"+albDNS+"/uploads/")
+	db.Exec("UPDATE users SET foto_url = REPLACE(foto_url, 'http://localhost:8080/uploads/', ?)", "http://"+albDNS+"/uploads/")
+
 	r := gin.Default()
 
 	// Serve Static Files (Local uploads fallback)

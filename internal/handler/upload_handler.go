@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
@@ -36,8 +37,15 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 			return
 		}
 		
-		// Return local URL
-		fileURL := "http://localhost:8080/uploads/" + header.Filename
+		// Return dynamic local URL based on host
+		scheme := "http"
+		if c.Request.Header.Get("X-Forwarded-Proto") != "" {
+			scheme = c.Request.Header.Get("X-Forwarded-Proto")
+		} else if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		host := c.Request.Host
+		fileURL := fmt.Sprintf("%s://%s/uploads/%s", scheme, host, header.Filename)
 		c.JSON(http.StatusOK, gin.H{"message": "File uploaded locally", "url": fileURL})
 		return
 	}
