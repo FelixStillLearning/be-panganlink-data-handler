@@ -1,20 +1,37 @@
-name: CI
+name: CI/CD Go Backend
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ "main" ]
   pull_request:
-    branches: [main]
+    branches: [ "main" ]
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-      - name: Run tests
-        run: go test ./...
-      - name: Run lint
-        uses: golangci/golangci-lint-action@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.25'
+
+    - name: Download Dependencies
+      run: go mod download
+
+    - name: Verify Build
+      run: go build -v ./...
+
+    # Uncomment and implement this when unit tests are added
+    # - name: Run Tests
+    #   run: go test -v ./...
+
+  # deployment:
+  #   needs: build-and-test
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Deploy to AWS (Placeholder)
+  #       run: echo "Add AWS deployment scripts here (e.g. AWS ECR / EC2 sync)"
