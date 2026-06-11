@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
@@ -9,11 +10,11 @@ import (
 )
 
 type UploadHandler struct {
-	azureHelper *storage.AzureHelper
+	cloudinaryHelper *storage.CloudinaryHelper
 }
 
-func NewUploadHandler(ah *storage.AzureHelper) *UploadHandler {
-	return &UploadHandler{azureHelper: ah}
+func NewUploadHandler(ch *storage.CloudinaryHelper) *UploadHandler {
+	return &UploadHandler{cloudinaryHelper: ch}
 }
 
 func (h *UploadHandler) UploadImage(c *gin.Context) {
@@ -24,26 +25,31 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 	}
 	defer file.Close()
 
-	if h.azureHelper == nil {
+	if h.cloudinaryHelper == nil {
 		// Ensure directory exists
 		os.MkdirAll("public/uploads", os.ModePerm)
 		
-		// Fallback to local storage if Azure is not configured
+		// Fallback to local storage if Cloudinary is not configured
 		err = c.SaveUploadedFile(header, "public/uploads/"+header.Filename)
 		if err != nil {
-			// Ensure directory exists
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file locally: " + err.Error()})
 			return
 		}
 		
-		// Return local URL
-		fileURL := "http://localhost:8080/uploads/" + header.Filename
+		// Return dynamic local URL based on host
+		scheme := "http"
+		if c.Request.Header.Get("X-Forwarded-Proto") != "" {
+			scheme = c.Request.Header.Get("X-Forwarded-Proto")
+		} else if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		host := c.Request.Host
+		fileURL := fmt.Sprintf("%s://%s/uploads/%s", scheme, host, header.Filename)
 		c.JSON(http.StatusOK, gin.H{"message": "File uploaded locally", "url": fileURL})
 		return
 	}
 
-	contentType := header.Header.Get("Content-Type")
-	fileURL, err := h.azureHelper.UploadFile(c.Request.Context(), file, header.Filename, contentType)
+	fileURL, err := h.cloudinaryHelper.UploadFile(c.Request.Context(), file, header.Filename)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

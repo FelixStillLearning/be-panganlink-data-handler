@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/example/be-panganlink-data-handler/internal/model"
 	"github.com/example/be-panganlink-data-handler/internal/repository"
@@ -223,7 +224,52 @@ func (h *AdminHandler) GetPriceTrends(c *gin.Context) {
 		return
 	}
 
-	res, err := h.aiService.GetForecast(komoditasID)
+	periods := 30
+	periodsStr := c.Query("periods")
+	if periodsStr != "" {
+		if val, err := strconv.Atoi(periodsStr); err == nil {
+			periods = val
+		}
+	}
+
+	res, err := h.aiService.GetForecast(komoditasID, periods)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+func (h *AdminHandler) UpdateAISync(c *gin.Context) {
+	var req struct {
+		KomoditasID string  `json:"komoditas_id" binding:"required"`
+		Tanggal     string  `json:"tanggal" binding:"required"`
+		HargaAktual float64 `json:"harga_aktual" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := h.aiService.UpdateData(req.KomoditasID, req.Tanggal, req.HargaAktual)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+func (h *AdminHandler) DeleteAISync(c *gin.Context) {
+	komoditasID := c.Query("komoditas_id")
+	tanggal := c.Query("tanggal")
+
+	if komoditasID == "" || tanggal == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "komoditas_id and tanggal query parameters are required"})
+		return
+	}
+
+	res, err := h.aiService.DeleteData(komoditasID, tanggal)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

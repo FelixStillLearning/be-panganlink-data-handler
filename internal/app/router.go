@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log"
 	"time"
 	"github.com/example/be-panganlink-data-handler/internal/config"
 	"github.com/example/be-panganlink-data-handler/internal/handler"
@@ -14,6 +15,11 @@ import (
 )
 
 func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
+	// Clean up existing localhost:8080 URLs to use the production Backend ALB DNS
+	albDNS := "panganlink-be-alb-95099952.ap-southeast-1.elb.amazonaws.com"
+	db.Exec("UPDATE products SET foto_url = REPLACE(foto_url, 'http://localhost:8080/uploads/', ?)", "http://"+albDNS+"/uploads/")
+	db.Exec("UPDATE users SET foto_url = REPLACE(foto_url, 'http://localhost:8080/uploads/', ?)", "http://"+albDNS+"/uploads/")
+
 	r := gin.Default()
 
 	// Serve Static Files (Local uploads fallback)
@@ -49,14 +55,18 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	paymentSvc := service.NewPaymentService(cfg.MidtransServerKey, cfg.MidtransIsProduction)
 	orderSvc := service.NewOrderService(orderRepo, paymentSvc, notifRepo)
 
-	// Cloud Storage
-	var azureHelper *storage.AzureHelper
-	if cfg.AzureAccountName != "" {
-		// NewAzureHelper now expects connectionString and containerName
-		// We'll pass AccountKey as the connection string or modify NewAzureHelper.
-		// Usually ConnectionString looks like: DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net
-		connStr := "DefaultEndpointsProtocol=https;AccountName=" + cfg.AzureAccountName + ";AccountKey=" + cfg.AzureAccountKey + ";EndpointSuffix=core.windows.net"
-		azureHelper, _ = storage.NewAzureHelper(connStr, cfg.AzureContainerName)
+	// Cloud Storage (Cloudinary)
+	var cloudinaryHelper *storage.CloudinaryHelper
+	if cfg.CloudinaryCloudName != "" {
+		var err error
+		cloudinaryHelper, err = storage.NewCloudinaryHelper(cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret)
+		if err != nil {
+			log.Printf("Gagal menginisialisasi Cloudinary: %v", err)
+		} else {
+			log.Println("Cloudinary Storage Helper berhasil diinisialisasi")
+		}
+	} else {
+		log.Println("CLOUDINARY_CLOUD_NAME kosong, menggunakan local storage fallback")
 	}
 
 	authHandler := handler.NewAuthHandler(authSvc)
@@ -65,7 +75,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	petaniHandler := handler.NewPetaniHandler(productSvc, aiSvc, orderSvc, userRepo)
 	pembeliHandler := handler.NewPembeliHandler(orderSvc, userRepo, productSvc)
 	paymentHandler := handler.NewPaymentHandler(orderSvc)
-	uploadHandler := handler.NewUploadHandler(azureHelper)
+	uploadHandler := handler.NewUploadHandler(cloudinaryHelper)
 	notifHandler := handler.NewNotificationHandler(notifRepo)
 
 	// Background Job: Cancel expired orders every hour
@@ -126,6 +136,8 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			admin.POST("/market-prices", adminHandler.CreateMarketPrice)
 			admin.DELETE("/market-prices/:id", adminHandler.DeleteMarketPrice)
 			admin.GET("/price-trends", adminHandler.GetPriceTrends)
+			admin.POST("/ai-sync/update", adminHandler.UpdateAISync)
+			admin.DELETE("/ai-sync/delete", adminHandler.DeleteAISync)
 			
 			admin.GET("/settings", adminHandler.GetSettings)
 			admin.PUT("/settings", adminHandler.UpdateSettings)
