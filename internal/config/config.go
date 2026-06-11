@@ -20,6 +20,9 @@ type Config struct {
 	AzureAccountName     string
 	AzureAccountKey      string
 	AzureContainerName   string
+	CloudinaryCloudName  string
+	CloudinaryAPIKey     string
+	CloudinaryAPISecret  string
 }
 
 func LoadConfig() *Config {
@@ -42,6 +45,9 @@ func LoadConfig() *Config {
 		AzureAccountName:  getEnv("AZURE_STORAGE_ACCOUNT_NAME", ""),
 		AzureAccountKey:   getEnv("AZURE_STORAGE_ACCOUNT_KEY", ""),
 		AzureContainerName: getEnv("AZURE_STORAGE_CONTAINER_NAME", "panganlink"),
+		CloudinaryCloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),
+		CloudinaryAPIKey:    getEnv("CLOUDINARY_API_KEY", ""),
+		CloudinaryAPISecret: getEnv("CLOUDINARY_API_SECRET", ""),
 	}
 }
 
